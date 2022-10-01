@@ -6,23 +6,19 @@ GATHERER FOR CATASTRO SOURCE - SPAIN
 ============================================================================
 CONTRIBUITORS: MANU BENITO
 ============================================================================
-"""
-            
+"""     
 #IMPORTS
-import requests, zipfile, io, sys, subprocess
+import requests, zipfile, io, subprocess
 
-from os import listdir, remove
-from os.path import isfile, join
-
+from os import listdir, remove, makedirs
+from os.path import exists, join
 import pandas as pd
 import geopandas as gpd
-import numpy as np
-
+import logging
 #GLOBALS
-repos = r"C:\Users\ManuBenito\Documents\GitHub"
-sys.path.append(repos)
-
-from walknet.sources.spain.landuse.catastro.metadata.listamuni import *
+#repos = r"C:\Users\ManuBenito\Documents\GitHub"
+#sys.path.append(repos)
+from sources.catastro_metadata import *
 
 def find_muni(code):
     found = [m for m in LISTMUNI if m.split("-")[0] == code][0]
@@ -31,24 +27,24 @@ def find_muni(code):
     else:
         return False
         
-def gml2geojson(inputs, output):
+def gml2geojson(input, output):
     """ Convert a GML to a GeoJSON file """
     try:
-        connect_command = """ogr2ogr -f GeoJSON {} {} -a_srs EPSG:25830""".format(output, inputs)
-        #print ("\n Executing: ", connect_command)
+        connect_command = """ogr2ogr -f GeoJSON {} {} -a_srs EPSG:25830""".format(output, input)
+        #logging.INFO("\n Executing: ", connect_command)
         process = subprocess.Popen(connect_command, shell=True)
         process.communicate()
         process.wait()
-        #print ("GML", input, "converted to", output + ".geojson")
+        #logging.INFO("GML", input, "converted to", output + ".geojson")
     except Exception as err:
-        print ("Failed to convert to GeoJSON from GML")
+        #logging.INFO("Failed to convert to GeoJSON from GML")
         raise
     return
 
 def download_cadastral_data(codes: list, outdir:str):
-
+    outdir = outdir+r"\level0\spatial"
     for code in codes:
-        
+
         assert find_muni(code)[0], f"Municipality with code {code} not found"
         
         muni = find_muni(code)[1]
@@ -57,29 +53,40 @@ def download_cadastral_data(codes: list, outdir:str):
         codine_nomcatastro = "-".join([codine_nomcatastro.split('-', 1)[0],codine_nomcatastro.split('-', 1)[-1].replace("-"," ")])
         codmun = codine_nomcatastro[0:5]
         codprov = codine_nomcatastro[0:2]
+        outdir_muni = r"{outdir}\{codmun}".format(outdir=outdir,codmun=codmun)
+        if not exists(outdir_muni):
+            makedirs(outdir_muni)
+        else:
+            pass
 
         urls = {'CadastralParcels' : f"http://www.catastro.minhap.es/INSPIRE/CadastralParcels/{codprov}/{codine_nomcatastro}/A.ES.SDGC.CP.{codmun}.zip",
                 'Addresses' : f"http://www.catastro.minhap.es/INSPIRE/Addresses/{codprov}/{codine_nomcatastro}/A.ES.SDGC.AD.{codmun}.zip",
                 'Buildings' : f"http://www.catastro.minhap.es/INSPIRE/Buildings/{codprov}/{codine_nomcatastro}/A.ES.SDGC.BU.{codmun}.zip"}
 
         for layer,url in urls.items():
+            logging.info(f"Getting URL {url}")
             r = requests.get(url)
-            z = zipfile.ZipFile(io.BytesIO(r.content))
-            z.extractall(outdir)
+            if r:
+                z = zipfile.ZipFile(io.BytesIO(r.content))
+                z.extractall(outdir_muni)
+            else:
+                logging.info(f'Warning: Municipality {codine_nomcatastro} had no response from ATOM')
+                continue
         
         layers = {"AD": "addresses","building": "building","buildingpart": "buildingpart","otherconstruction": "otherconstruction", "cadastralparcel": "cadastralparcel","cadastralzoning": "cadastralzoning"}
         
-        for gml in [join(outdir, f) for f in listdir(outdir) if code in f and f.endswith(("gml"))]:
+        for gml in [join(outdir_muni, f) for f in listdir(outdir_muni) if code in f and f.endswith(("gml"))]:
             for particle,layer in layers.items():
                 if particle in gml:
-                    gml2geojson(gml,outdir+f"\{layer}.{codmun}.geojson")
+                    gml2geojson(gml, outdir_muni+f"\{layer}_{codmun}.geojson")
+                    
 
-        for otherfile in [join(outdir, f) for f in listdir(outdir) if code in f and not f.endswith(("geojson"))]:
-            os.remove(otherfile)
+        for otherfile in [join(outdir_muni, f) for f in listdir(outdir_muni) if code in f and not f.endswith(("geojson"))]:
+            remove(otherfile)
         
-        assert len([f for f in listdir(outdir) if code in f and f.endswith(("geojson"))]) == len(layers), "Not all files expected were processed"
+        assert len([f for f in listdir(outdir_muni) if code in f and f.endswith(("geojson"))]) == len(layers), "Not all files expected were processed"
         
-        print(f"Municipality {muni} was successfully downloaded and processed")
+        logging.info(f"Municipality {muni} was successfully downloaded and processed")
 
 """
 ============================================================================
@@ -102,15 +109,15 @@ def find_muni(code: str):
         return False
 
 def files_for_muni(code, path):
-    
+    path = path+r"\level0"
     if code[2] == "0":
         file_code = "_".join([code[0:2],code[3:]])
     else:
         file_code = "_".join([code[0:2],code[2:]])
         
-    cadastre_path = [os.path.join(path+r"\non-spatial", f) for f in os.listdir(path+r"\non-spatial") if file_code in f and f.endswith(".CAT")][0]
-    addresses_path = [os.path.join(path+r"\spatial", f) for f in os.listdir(path+r"\spatial") if code in f and "addresses" in f and f.endswith(".geojson")][0]
-    parcels_path = [os.path.join(path+r"\spatial", f) for f in os.listdir(path+r"\spatial") if code in f and "cadastralparcel" in f and f.endswith(".geojson")][0]
+    cadastre_path = [join(path+r"\non-spatial", f) for f in listdir(path+r"\non-spatial") if file_code in f and f.endswith(".CAT")][0]
+    addresses_path = [join(path+r"\spatial\{code}".format(code=code), f) for f in listdir(path+r"\spatial\{code}".format(code=code)) if code in f and "addresses" in f and f.endswith(".geojson")][0]
+    parcels_path = [join(path+r"\spatial\{code}".format(code=code), f) for f in listdir(path+r"\spatial\{code}".format(code=code)) if code in f and "cadastralparcel" in f and f.endswith(".geojson")][0]
     
     return cadastre_path, addresses_path, parcels_path
 
@@ -151,6 +158,7 @@ def open_cat_file(cadastre_path: str) -> pd.DataFrame:
     return df
 
 def column_strategy(df):
+    import numpy as np
     for col in column_treatment:
         if column_treatment[col]['strategy']!='None':
             df[col] = eval(column_treatment[col]['strategy'])
@@ -231,14 +239,15 @@ def process_cadastral_data(path: str, code: str, merge = 'Addresses') -> gpd.Geo
     cadastre_path, addresses_path, parcels_path = files_for_muni(code, path)
     df = open_cat_file(cadastre_path)
     df = column_strategy(df)
-    print(f'{municipality} .cat file processed')
+    logging.INFO(f'{municipality} .cat file processed')
     df = make_address_column(df)
-    print(f'{municipality} address column prepared')
+    logging.INFO(f'{municipality} address column prepared')
     gdf = merge_addresses_points(df, addresses_path)
-    print(f'{municipality} address spatial data merged')
+    logging.INFO(f'{municipality} address spatial data merged')
     gdf = detect_multiproperty(gdf)
     gdf = build_use_names(gdf)
-    print(f'{municipality} land use and typology procesed')
+    logging.INFO(f'{municipality} land use and typology procesed')
+    
     return (gdf)
 """
 ============================================================================
@@ -249,3 +258,14 @@ CONTRIBUITORS: MANU BENITO
 ============================================================================
 TRANSFORM DATA INTO WALKNET FORMATS
 """
+
+def gather(path: str, codes:list):
+    download_cadastral_data(codes, path)
+    #logging.DEBUG('Gathering data for...')
+def level0(path: str, codes:list):
+    gdfs = {code: process_cadastral_data(path, codes) for code in codes}
+    #logging.INFO('Processing level0 for...')
+#def level1():
+    #logging.INFO('Processing level1 for...')
+#def persist():
+    #logging.INFO('Persisting data for...')
