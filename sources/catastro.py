@@ -229,26 +229,27 @@ def build_use_names(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     gdf['Part Typology Level3'] = gdf['Part Typology'].str[0:4].replace(typology)
     return gdf
 
-def process_cadastral_data(path: str, code: str, merge = 'Addresses') -> gpd.GeoDataFrame:
+def process_cadastral_data(path: str, codes: str, merge = 'Addresses') -> gpd.GeoDataFrame:
     """
     Reads the corresponding addresses file
     :df: The joined cadastral registers dataframe
     :return: The dataframe with a normalized gml_id address format
     """
-    municipality = find_muni(code)[1]
-    cadastre_path, addresses_path, parcels_path = files_for_muni(code, path)
-    df = open_cat_file(cadastre_path)
-    df = column_strategy(df)
-    logging.INFO(f'{municipality} .cat file processed')
-    df = make_address_column(df)
-    logging.INFO(f'{municipality} address column prepared')
-    gdf = merge_addresses_points(df, addresses_path)
-    logging.INFO(f'{municipality} address spatial data merged')
-    gdf = detect_multiproperty(gdf)
-    gdf = build_use_names(gdf)
-    logging.INFO(f'{municipality} land use and typology procesed')
+    for code in codes:
+        municipality = find_muni(code)[1]
+        cadastre_path, addresses_path, parcels_path = files_for_muni(code, path)
+        df = open_cat_file(cadastre_path)
+        df = column_strategy(df)
+        #logging.INFO(f'{municipality} .cat file processed')
+        df = make_address_column(df)
+        #logging.INFO(f'{municipality} address column prepared')
+        gdf = merge_addresses_points(df, addresses_path)
+        #logging.INFO(f'{municipality} address spatial data merged')
+        gdf = detect_multiproperty(gdf)
+        gdf = build_use_names(gdf)
+        #logging.INFO(f'{municipality} land use and typology procesed')
+        gdf.to_file(path+r"\level1\{municipality}.gpkg".format(municipality=municipality),driver='GPKG')
     
-    return (gdf)
 """
 ============================================================================
 ============================================================================
@@ -259,13 +260,26 @@ CONTRIBUITORS: MANU BENITO
 TRANSFORM DATA INTO WALKNET FORMATS
 """
 
+"""
+============================================================================
+============================================================================
+PERSISTANCE FOR CATASTRO SOURCE - SPAIN
+============================================================================
+CONTRIBUITORS: MANU BENITO
+============================================================================
+UPLOAD IN WALKNET INFRASTRUCTURE
+"""
+
+
+
 def gather(path: str, codes:list):
     download_cadastral_data(codes, path)
     #logging.DEBUG('Gathering data for...')
 def level0(path: str, codes:list):
-    gdfs = {code: process_cadastral_data(path, codes) for code in codes}
+    process_cadastral_data(path, codes)
     #logging.INFO('Processing level0 for...')
-#def level1():
+def level1():
+    transform_cadastral_data(path,codes)
     #logging.INFO('Processing level1 for...')
 #def persist():
     #logging.INFO('Persisting data for...')

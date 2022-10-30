@@ -1,5 +1,29 @@
 # -*- coding: utf-8 -*-
 
+
+final_cols = ['gml_id',
+     'Parcel Cadastral ID',
+     'Parcel Province Code','Parcel Province Name','Parcel Municipality Code Cadastre', 'Parcel Municipality Code INE','Parcel Municipality Name INE', 'Parcel Street Code', 'Parcel Street Class', 'Parcel Street Name','Parcel First Number', 'Parcel First Letter', 'Parcel Second Number','Parcel Second Letter',
+     'Parcel Area', 'Parcel Built Area', 'Parcel Built Area Above Ground','Parcel Built Area Under Ground', 'Parcel Built Area Under Cover',
+     'Building Code ID',
+     'Building Year Built', 'Building Accuracy Year Built',
+     'Property gml Number', 'Property gml_id',
+     'Property ID','Property Cadastral ID',
+     'Property First Control Character', 'Property Second Control Character','Property Number Cadastre', 'Property Number Municipality','Property Number Land Register',
+     'Property Street Code', 'Property Street Class', 'Property Street Name', 'Property First Number', 'Property First Letter', 'Property Second Number', 'Property Second Letter','Property Kilometric Point',
+     'Property Block', 'Property Stairway','Property Floor', 'Property Door Number', 'Property Order Number',
+     'Property Age', 'Property General Use','Property Land Use Level1',
+     'Property Built Area','Property Other Area (unbuilt or undivided)','Property Coefficient of property if common elements',
+     'Property Single or Multiple',
+     'Part Order Number',
+     'Part Block', 'Part Stairway', 'Part Floor', 'Part Door',
+     'Part Detailed Use', 'Part Land Use Level1', 'Part Land Use Level2',
+     'Part Renovation Kind', 'Part Renovation Year', 'Part Weighted Year',
+     'Part Is Interior', 'Part Is Common',
+     'Part Area in Cadastral Terms',
+     'Part Area in Terrace or Porch', 'Part Area in Other Floors',
+     'Part Typology', 'Part Typology Level1','Part Typology Level2', 'Part Typology Level3','geometry']
+
 land_use = {
     "A"     :   "Storage and Parking",
     "AAL"   :   "Storage",
