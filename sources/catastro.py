@@ -11,7 +11,7 @@ CONTRIBUITORS: MANU BENITO
 import requests, zipfile, io, subprocess
 
 from os import listdir, remove, makedirs
-from os.path import exists, join
+from os.path import exists, join, isfile
 import pandas as pd
 import geopandas as gpd
 import logging
@@ -98,9 +98,13 @@ CONTRIBUITORS: MANU BENITO
 Reads .CAT and addresses files and merges them coherently, then searches for
 relevant land use units and builds a spatial data table
 """
-#IMPORTS
 
-def find_muni(code: str):
+def find_muni(code: str) -> bool:
+    """
+    Searches for municipality code in metadata LISTMUNI. Make sure this list is up to date
+    :code: A string with municipality code 
+    :returns: boolean evaluation if municipality code is found
+    """
     found = [m for m in LISTMUNI if m.split("-")[0] == code][0]
     if found:
         return True, found
@@ -108,7 +112,8 @@ def find_muni(code: str):
         print(f"Check code {code}. Code not found")
         return False
 
-def files_for_muni(code, path):
+def files_for_muni(code: str, path: str) -> tuple:
+    
     path = path+r"\level0"
     if code[2] == "0":
         file_code = "_".join([code[0:2],code[3:]])
@@ -157,7 +162,12 @@ def open_cat_file(cadastre_path: str) -> pd.DataFrame:
     df = merge_and_drop(raw_tables['11'],df,'right',['Parcel Cadastral ID'])
     return df
 
-def column_strategy(df):
+def column_strategy(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Applies a strategy to each column, as defined by the metadata in string format
+    :df: The raw dataframe with cadastral data split in columns
+    :return: The processed dataframe
+    """
     import numpy as np
     for col in column_treatment:
         if column_treatment[col]['strategy']!='None':
@@ -248,7 +258,7 @@ def process_cadastral_data(path: str, codes: str, merge = 'Addresses') -> gpd.Ge
         gdf = detect_multiproperty(gdf)
         gdf = build_use_names(gdf)
         #logging.INFO(f'{municipality} land use and typology procesed')
-        gdf.to_file(path+r"\level1\{municipality}.gpkg".format(municipality=municipality),driver='GPKG')
+        gdf.drop(columns=['geometry']).to_parquet(path+r"\level1\{municipality}.parquet".format(municipality=municipality))
     
 """
 ============================================================================
@@ -260,6 +270,56 @@ CONTRIBUITORS: MANU BENITO
 TRANSFORM DATA INTO WALKNET FORMATS
 """
 
+classes = ['Property Land Use Level1', 'Part Typology Level1', 'Part Typology Level2', 'Part Typology Level3', 'Part Land Use Level1', 'Part Land Use Level2']
+relations = pd.read_excel(r"C:\Users\ManuBenito\Documents\GitHub\walknet\sources\spain\landuse\catastro\metadata\relations.xls")
+
+def apply_logic(classes: list, df: pd.DataFrame, combination_tuple: tuple, end_type: str, category):
+
+       combination_tuple = tuple(['no'] if not isinstance(x,list) else x for x in combination_tuple)
+       conditions = "&".join([f"(df['{field}'].isin(combination_tuple[{i}]))" for i,field in enumerate(classes) if not combination_tuple[i] == ['no']])
+       df['End Type'] = end_type
+       df.loc[eval(conditions),'Walknet Category'] = end_type+" - "+category
+       return df   
+      
+def group_data(gdf):
+    
+    gdf['x'] = gdf['geometry'].x
+    gdf['y'] = gdf['geometry'].y
+
+    common = ['Parcel Cadastral ID', 'Property Cadastral ID','x','y','End Type','Walknet Category']
+    local = ['Part Area in Cadastral Terms']
+
+    t = gdf.groupby(common).sum()[local]
+    pv = pd.pivot_table(t.reset_index(),values='Part Area in Cadastral Terms', index = ['Parcel Cadastral ID', 'Property Cadastral ID','x','y'],columns = ['Walknet Category'])
+    pv = pv.groupby(['x','y']).sum().rename(columns={c:f"{c} - Area" for c in pv.columns})
+    cv = t.groupby(common).count()[local]
+    cv = pd.pivot_table(cv.reset_index(),values='Part Area in Cadastral Terms', index = ['Parcel Cadastral ID', 'Property Cadastral ID','x','y'],columns = ['Walknet Category'])
+    cv = cv.groupby(['x','y']).sum().rename(columns={c:f"{c} - Number" for c in cv.columns})
+    df = pd.concat([cv,pv],axis=1).reset_index()
+    
+    return df
+
+def transform_data(gdf):
+    
+    for i,row in relations.iterrows():
+        combination = tuple(row[col] for col in classes)
+        end_type = row['End Type']
+        category = row['Walknet Category']
+        gdf = apply_logic(classes, gdf,combination,end_type,category)
+         
+    gdf = group_data(gdf)
+    return gdf
+
+def transform_cadastral_data(path,codes):
+    path = r"{path}\level1".format(path = path)
+    for column in classes:
+        relations.loc[~relations[column].isna(),column] = relations[column].str.split(";")
+    
+    if codes: gpkgs = [gpd.read_file(join(path, f)) for f in listdir(path) if isfile(join(path, f)) and f.endswith('.gpkg')]
+    else: gpkgs = [gpd.read_file(join(path, f)) for f in listdir(path) if isfile(join(path, f)) and f.split("-")[0] in codes and f.endswith('.gpkg')]
+    return pd.concat([transform_data(gdf) for gdf in gpkgs])
+    
+    
 """
 ============================================================================
 ============================================================================
@@ -270,7 +330,14 @@ CONTRIBUITORS: MANU BENITO
 UPLOAD IN WALKNET INFRASTRUCTURE
 """
 
-
+"""
+============================================================================
+============================================================================
+MAIN FUNCTIONS FOR CATASTRO SOURCE - SPAIN
+============================================================================
+CONTRIBUITORS: MANU BENITO
+============================================================================
+"""
 
 def gather(path: str, codes:list):
     download_cadastral_data(codes, path)
@@ -278,8 +345,8 @@ def gather(path: str, codes:list):
 def level0(path: str, codes:list):
     process_cadastral_data(path, codes)
     #logging.INFO('Processing level0 for...')
-def level1():
-    transform_cadastral_data(path,codes)
+def level1(path: str, codes:list):
+    transform_cadastral_data(path, codes)
     #logging.INFO('Processing level1 for...')
 #def persist():
     #logging.INFO('Persisting data for...')
