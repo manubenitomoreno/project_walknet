@@ -1,7 +1,6 @@
 #IMPORTS
 
 import pandas as pd
-import numpy as np
 import re 
 
 from sources.edm2018_metadata import *  
@@ -25,17 +24,17 @@ Reads all Excel files (both data and codes sheets)
 Consolidates data and mapping codes
 Merges data together
 """    
-def read_data(path, files, schemas):
+def read_data(path: str, files: dict, schemas: dict):
     return {n:pd.read_excel(
         r"{path}\level0\trips\{p}.xlsx".format(path=path,p=p), sheet_name = n.upper(),dtype=schemas[n]
         ) for n,p in files.items()}
     
-def read_codes(path, files, schemas):
+def read_codes(path: str, files: dict):
     return {n:pd.read_excel(
     r"{path}\level0\trips\{p}.xlsx".format(path=path,p=p), sheet_name = 'LIBRO DE CODIGOS', header = 0, usecols = ['VARIABLE','VALORES'],skiprows=[1,2], engine ='openpyxl'
     ) for n,p in files.items()}
     
-def fill_in_order(df):
+def fill_in_order(df: pd.DataFrame):
     fill = ''
     for i,r in df.iterrows():
         if not pd.isnull(r['VARIABLE']):
@@ -44,17 +43,18 @@ def fill_in_order(df):
             df.at[i,'VARIABLE'] = fill
     return df
 
-def parse_codes(df):
+def parse_codes(df: pd.DataFrame):
     df['CODIGO'] = df['VALORES'].str.extract(r"""(?m)^(\d+).*""").astype(int)
     df['LITERAL'] = df['VALORES'].str.split(r"""^[^A-Z]*""").str[1].str.strip().str.removesuffix(r"""'""").str.strip()
     return df[['VARIABLE','CODIGO','LITERAL']]
 
-def map_columns(df,mapper):
+def map_columns(df: pd.DataFrame, mapper: dict):
+    
     for c in [x for x in df.columns if x in mapper.keys()]:
         df[c] = df[c].replace(mapper[c])
     return df
 
-def process_edm_data(path, files, schemas):
+def process_edm_data(path: str, files: dict, schemas: dict):
     
     data = read_data(path, files, schemas)
     codes = read_codes(path, files, schemas)
@@ -80,7 +80,7 @@ def process_edm_data(path, files, schemas):
     
     final.set_index(['ID_HOGAR','ID_IND','ID_VIAJE'],inplace=True)
     
-    final.to_csv(r"""{path}\level1\level1_edm2018.csv""".format(path=path),sep=";")
+    final.to_parquet(r"""{path}\level1\level1_edm2018.parquet""".format(path=path))
 
 """
 ============================================================================

@@ -9,7 +9,7 @@ schemas = {
         'EMODO':int,
         'EMODO1':str,
         'MODO_PRIORITARIO':int,
-        'MODO':int,
+        'MODO':int, 
         'ELINEAEMPRESA_ORIGINAL':str,
         'ESUBIDA':str,
         'ESUBIDA_cod':str,
