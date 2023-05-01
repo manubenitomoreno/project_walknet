@@ -30,8 +30,8 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/github_username/repo_name">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+  <a href="https://github.com/manubenitomoreno/project_walknet">
+    <img src="walknet_logo.png" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">Project WALKNET</h3>
@@ -85,7 +85,14 @@
 
 [![Product Name Screen Shot][product-screenshot]](https://example.com)
 
-Here's a blank template to get started: To avoid retyping too much info. Do a search and replace with your text editor for the following: `github_username`, `repo_name`, `twitter_handle`, `linkedin_username`, `email_client`, `email`, `project_title`, `project_description`
+This repository was built to centralize the code around my PhD and associated research.
+
+Most of the code is devoted to a program that gathers and homogenises a number of urban data sources into a single database framework, where different aggregations of the information are performed, in order to generate different outputs that comprise the source data for multiple analytical projects.
+
+In short, high-level Python classes orchestrate a pipeline for each data source is defined to trigger different steps of its processing, and then interact with a database, where most of the aggregation and relations among the sources are performed.
+
+After the desired outputs are obtained, a series of EDA, ESDA and ML processes are contained in ipython notebooks, each supporting one or more of the papers that comprise this project.
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -104,8 +111,7 @@ Here's a blank template to get started: To avoid retyping too much info. Do a se
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+If you wish to get a local copy of this code, you will simply need to clone the repo and then run a series of installation steps, including setting a local database, running a bash script to generate a folder structure for intermediate data, and setting up the right Python environment to correctly run the code. 
 
 ### Prerequisites
 
