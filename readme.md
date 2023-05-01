@@ -31,7 +31,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/manubenitomoreno/project_walknet">
-    <img src="walknet-logo.png" alt="Logo" width="80" height="80">
+    <img src="walknet-logo.png" alt="Logo" width="455" height="160">
   </a>
 
 <h3 align="center">Project WALKNET</h3>
