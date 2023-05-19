@@ -323,12 +323,15 @@ def transform_cadastral_data(path,codes):
 """
 ============================================================================
 ============================================================================
-PERSISTANCE FOR CATASTRO SOURCE - SPAIN
+LEVEL2 FOR CATASTRO SOURCE - SPAIN
 ============================================================================
 CONTRIBUITORS: MANU BENITO
 ============================================================================
-UPLOAD IN WALKNET INFRASTRUCTURE
+MAKE CSV FILES TO UPLOAD INTO THE PROPER DB TABLE
 """
+#def transform_schema(table, metadata,):
+    #This function should take the level1 data and transform it into csvs adapted to the postgresql schema of the defined table
+    #we group by the GML id, make the jsons containing land use, and transform schema
 
 """
 ============================================================================
